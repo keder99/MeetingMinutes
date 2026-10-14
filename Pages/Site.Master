@@ -1,0 +1,109 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.Master.cs" Inherits="MeetingMinutes.SiteMaster" %>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head runat="server" id="Head1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>سامانه صورت جلسات</title>
+        <link runat="server" rel="stylesheet" href="~/Content/assets/font/Vazirmatn-font-face.css" />
+    <link runat="server" rel="stylesheet" href="~/Content/assets/tabler-icons/tabler-icons.min.css" />
+    <link runat="server" rel="stylesheet" href="~/Content/Site.css" />
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server"></asp:ContentPlaceHolder>
+</head>
+<body>
+<form id="form1" runat="server">
+    <header class="topbar">
+        <button type="button" class="icon-btn mobile-only" id="menuToggle" aria-label="منو"><i class="ti ti-menu-2"></i></button>
+        <a href="Default.aspx" class="page-title"><div class="brand"><img src="/content/logo.png" alt="logo" style="width:7%;"/><asp:Literal ID="litOrgName" runat="server" Mode="Encode" /></div></a>
+        <div class="top-actions">
+            <a runat="server" href="~/Pages/Profile.aspx" class="user-chip" title="پروفایل من">
+                <div class="noner">
+                    <b><asp:Literal ID="litName" runat="server" Mode="Encode" /></b>
+                    <small><asp:Literal ID="litRole" runat="server" Mode="Encode" /></small>
+                </div>
+                <asp:Literal ID="litAvatar" runat="server" />
+            </a>
+            <div class="notif-wrap">
+                <button type="button" class="icon-btn" id="notifBell" title="اعلان‌ها">
+                    <i class="ti ti-bell"></i><asp:Literal ID="litNotifBadge" runat="server" />
+                </button>
+                <div class="notif-panel" id="notifPanel">
+                    <div class="notif-panel-head">اعلان‌ها</div>
+                    <asp:Panel ID="pnlProfileNotif" runat="server" Visible="false" CssClass="notif-item notif-system">
+                        <div class="grow">
+                            <b>تکمیل اطلاعات پروفایل</b>
+                            <p>نام یا تلفن همراه شما هنوز کامل نیست.</p>
+                        </div>
+                        <a runat="server" href="~/Pages/Profile.aspx" class="notif-view">نمایش کامل</a>
+                    </asp:Panel>
+                    <asp:Repeater ID="rptNotifications" runat="server">
+                        <ItemTemplate>
+                            <div class='notif-item<%# (bool)Eval("IsRead") ? " read" : "" %>'>
+                                <div class="grow">
+                                    <b><%#: NotifTitle(Eval("Title"), Eval("Body")) %></b>
+                                    <p><%#: Eval("Body") %></p>
+                                    <small><%#: FaDate(Eval("CreatedAt")) %></small>
+                                </div>
+                            </div>
+                        </ItemTemplate>
+                    </asp:Repeater>
+                    <asp:Panel ID="pnlNoNotif" runat="server" Visible="false" CssClass="notif-empty">اعلانی وجود ندارد.</asp:Panel>
+                </div>
+            </div>
+            <a runat="server" href="~/Pages/ChangePassword.aspx" class="icon-btn" title="تغییر رمز عبور"><i class="ti ti-key"></i></a>
+            <asp:LinkButton ID="lnkLogout" runat="server" CssClass="icon-btn" ToolTip="خروج"
+                            CausesValidation="false" OnClick="lnkLogout_Click"><i class="ti ti-logout"></i></asp:LinkButton>
+        </div>
+    </header>
+
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-nav">
+                <asp:Literal ID="litNav" runat="server" />
+            </div>
+            <a runat="server" class="sidebar-footer" href="~/Pages/AboutCompany.aspx">
+                <img src="<%= ResolveUrl("~/Content/last.png") %>" alt="لوگو شرکت" />
+                <p style="display:inline;">
+                    <b>MeshkatSD</b>
+                </p>
+            </a>
+        </aside>
+        <div class="overlay" id="overlay"></div>
+        <main class="content" id="content">
+            <asp:ContentPlaceHolder ID="MainContent" runat="server"></asp:ContentPlaceHolder>
+        </main>
+    </div>
+
+</form>
+<script src="<%= ResolveUrl("~/Scripts/jalali.js") %>?v=<%= System.IO.File.GetLastWriteTimeUtc(Server.MapPath("~/Scripts/jalali.js")).Ticks %>"></script>
+<script>
+(function () {
+    var s = document.getElementById('sidebar'), o = document.getElementById('overlay'), b = document.getElementById('menuToggle');
+    function toggle() { s.classList.toggle('open'); o.classList.toggle('open'); }
+    function close() { s.classList.remove('open'); o.classList.remove('open'); }
+    if (b) b.onclick = toggle;
+    o.onclick = close;
+})();
+(function () {
+    var bell = document.getElementById('notifBell'), panel = document.getElementById('notifPanel');
+    if (!bell || !panel) return;
+    bell.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var opening = !panel.classList.contains('open');
+        panel.classList.toggle('open');
+        if (opening) {
+            // بدون رفتن به سرور، فقط شمارنده را همین‌جا صفر می‌کنیم؛ خودِ خواندن با fetch زیر ثبت می‌شود
+            var badge = bell.querySelector('.notif-badge');
+            if (badge) { badge.parentNode.removeChild(badge); }
+            try {
+                fetch('<%= ResolveUrl("~/Pages/MarkNotificationsRead.ashx") %>', { credentials: 'same-origin' });
+            } catch (err) { /* اگر fetch در دسترس نبود، دفعه‌ی بعد که صفحه بارگذاری شود دوباره تلاش می‌شود */ }
+        }
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { panel.classList.remove('open'); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.classList.remove('open'); });
+})();
+</script>
+</body>
+</html>
